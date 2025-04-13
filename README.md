@@ -33,7 +33,7 @@ A responsive and feature-rich web app to calculate the **Moment of Inertia (MOI)
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/your-username/moment-of-inertia-calculator.git
+   git clone https://github.com/akashshahade/moment_of_inertia-calculator.git
    cd moment-of-inertia-calculator
    ```
 
@@ -57,11 +57,12 @@ A responsive and feature-rich web app to calculate the **Moment of Inertia (MOI)
 
 ## 📸 Screenshots
 
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![light](https://user-images.githubusercontent.com/your-username/light-preview.png) | ![dark](https://user-images.githubusercontent.com/your-username/dark-preview.png) |
+![image](https://github.com/user-attachments/assets/e80c75bf-4a7c-49dc-a132-d659d130d429)
+![image](https://github.com/user-attachments/assets/a290c879-a758-4b80-8ceb-ab360adf4ead)
+![image](https://github.com/user-attachments/assets/c4d3cf24-cef8-4bf5-a61e-6542e56f4534)
 
-*(Replace URLs with real screenshots once hosted)*
+
+
 
 ---
 
@@ -88,4 +89,5 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 ## 👨‍💻 Author
 
-Developed by [Your Name](https://github.com/your-username) 🚀
+Developed by Akash Shahade 
+https://github.com/akashshahade 🚀
