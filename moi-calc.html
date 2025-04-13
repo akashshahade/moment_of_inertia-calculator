@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moment of Inertia Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .shape-diagram {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            margin: 20px auto;
+            background-color: rgba(59, 130, 246, 0.1);
+            border-radius: 8px;
+        }
+        .dark .shape-diagram {
+            background-color: rgba(59, 130, 246, 0.2);
+        }
+        .dimension-line {
+            position: absolute;
+            background-color: #ef4444;
+            height: 2px;
+        }
+        .dimension-text {
+            position: absolute;
+            color: #ef4444;
+            font-size: 12px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .dark .dimension-text {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        .shape-outline {
+            position: absolute;
+            border: 2px solid #3b82f6;
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            background-color: #3b82f6;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #3b82f6;
+        }
+        .dark {
+            background-color: #1f2937;
+            color: #f3f4f6;
+        }
+        .dark .bg-white {
+            background-color: #374151 !important;
+        }
+        .dark .bg-gray-100 {
+            background-color: #4b5563 !important;
+        }
+        .dark .text-gray-800 {
+            color: #f3f4f6 !important;
+        }
+        .dark .border-gray-200 {
+            border-color: #4b5563 !important;
+        }
+        .dark .bg-blue-50 {
+            background-color: #1e40af !important;
+        }
+        .dark .text-blue-800 {
+            color: #93c5fd !important;
+        }
+        .dark .bg-gray-50 {
+            background-color: #111827 !important;
+        }
+        @media (max-width: 768px) {
+            .shape-diagram {
+                width: 150px;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8">
+            <div class="flex items-center mb-4 md:mb-0">
+                <i class="fas fa-ruler-combined text-3xl text-blue-600 mr-3"></i>
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Moment of Inertia Calculator</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center">
+                    <span class="mr-2 text-gray-700 dark:text-gray-300">Units:</span>
+                    <select id="unit-select" class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1 text-gray-700 dark:text-gray-300">
+                        <option value="mm">mm</option>
+                        <option value="in">inches</option>
+                    </select>
+                </div>
+                <div class="flex items-center">
+                    <span class="mr-2 text-gray-700 dark:text-gray-300">Dark Mode:</span>
+                    <div class="relative inline-block w-12 mr-2 align-middle select-none">
+                        <input type="checkbox" id="dark-mode-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label for="dark-mode-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Shape Selection and Input -->
+            <div class="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Shape Selection</h2>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2">Select Shape:</label>
+                    <select id="shape-select" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                        <option value="rectangle">Rectangle</option>
+                        <option value="circle">Solid Circle</option>
+                        <option value="hollow-circle">Hollow Circle</option>
+                        <option value="triangle">Triangle</option>
+                        <option value="i-beam">I-Beam</option>
+                        <option value="t-beam">T-Beam</option>
+                        <option value="c-channel">C-Channel</option>
+                        <option value="trapezoid">Trapezoid</option>
+                    </select>
+                </div>
+
+                <!-- Input Fields (dynamically populated) -->
+                <div id="input-fields" class="space-y-4">
+                    <!-- Rectangle inputs -->
+                    <div id="rectangle-inputs">
+                        <div>
+                            <label class="block text-gray-700 dark:text-gray-300 mb-1">Base (b):</label>
+                            <input type="number" id="rectangle-base" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter base length">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 dark:text-gray-300 mb-1">Height (h):</label>
+                            <input type="number" id="rectangle-height" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter height">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <button id="calculate-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-300">
+                        <i class="fas fa-calculator mr-2"></i> Calculate MOI
+                    </button>
+                </div>
+
+                <!-- Compare Mode Toggle -->
+                <div class="mt-6 flex items-center">
+                    <input type="checkbox" id="compare-mode" class="mr-2">
+                    <label for="compare-mode" class="text-gray-700 dark:text-gray-300">Compare with another shape</label>
+                </div>
+
+                <!-- Second Shape Inputs (hidden by default) -->
+                <div id="second-shape-container" class="mt-4 hidden">
+                    <h3 class="text-lg font-medium mb-2 text-gray-800 dark:text-white">Second Shape</h3>
+                    <select id="shape-select-2" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 mb-4">
+                        <option value="rectangle">Rectangle</option>
+                        <option value="circle">Solid Circle</option>
+                        <option value="hollow-circle">Hollow Circle</option>
+                        <option value="triangle">Triangle</option>
+                        <option value="i-beam">I-Beam</option>
+                        <option value="t-beam">T-Beam</option>
+                        <option value="c-channel">C-Channel</option>
+                        <option value="trapezoid">Trapezoid</option>
+                    </select>
+                    
+                    <div id="input-fields-2" class="space-y-4">
+                        <!-- Rectangle inputs -->
+                        <div id="rectangle-inputs-2">
+                            <div>
+                                <label class="block text-gray-700 dark:text-gray-300 mb-1">Base (b):</label>
+                                <input type="number" id="rectangle-base-2" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter base length">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 dark:text-gray-300 mb-1">Height (h):</label>
+                                <input type="number" id="rectangle-height-2" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter height">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results and Diagram -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Diagram and Results -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Results</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Shape Diagram -->
+                        <div>
+                            <h3 class="text-lg font-medium mb-2 text-gray-800 dark:text-white">Shape Diagram</h3>
+                            <div id="shape-diagram" class="shape-diagram">
+                                <!-- Diagram will be rendered here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Results -->
+                        <div>
+                            <h3 class="text-lg font-medium mb-2 text-gray-800 dark:text-white">Moment of Inertia</h3>
+                            <div id="results" class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-md">
+                                <p class="text-gray-700 dark:text-gray-300">Select a shape and enter dimensions to calculate.</p>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <h4 class="font-medium mb-2 text-gray-800 dark:text-white">Formula Used:</h4>
+                                <div id="formula" class="bg-gray-100 dark:bg-gray-700 p-3 rounded-md">
+                                    <p class="text-gray-700 dark:text-gray-300">Formula will appear here.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Results (hidden by default) -->
+                <div id="comparison-results" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hidden">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Comparison Results</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Shape 1 Results -->
+                        <div>
+                            <h3 class="text-lg font-medium mb-2 text-gray-800 dark:text-white">Shape 1</h3>
+                            <div id="results-1" class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-md">
+                                <p class="text-gray-700 dark:text-gray-300">Results for first shape.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Shape 2 Results -->
+                        <div>
+                            <h3 class="text-lg font-medium mb-2 text-gray-800 dark:text-white">Shape 2</h3>
+                            <div id="results-2" class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-md">
+                                <p class="text-gray-700 dark:text-gray-300">Results for second shape.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h3 class="text-lg font-medium mb-2 text-gray-800 dark:text-white">Comparison Chart</h3>
+                        <canvas id="comparison-chart" height="150"></canvas>
+                    </div>
+                </div>
+
+                <!-- Educational Content -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">About Moment of Inertia</h2>
+                    
+                    <div class="prose dark:prose-invert max-w-none">
+                        <p class="text-gray-700 dark:text-gray-300">
+                            The <strong>moment of inertia (MOI)</strong>, also known as the second moment of area, is a property of a shape that measures its resistance to bending or deflection when subjected to a load. It's an important concept in structural engineering and physics.
+                        </p>
+                        
+                        <div class="mt-4">
+                            <h3 class="font-medium text-gray-800 dark:text-white">Key Points:</h3>
+                            <ul class="list-disc pl-5 mt-2 space-y-1 text-gray-700 dark:text-gray-300">
+                                <li>MOI depends on both the shape and the axis about which it's calculated</li>
+                                <li>Higher MOI means greater resistance to bending</li>
+                                <li>Units are length to the fourth power (mm⁴ or in⁴)</li>
+                                <li>For composite shapes, parallel axis theorem is often used</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h3 class="font-medium text-gray-800 dark:text-white">Common Applications:</h3>
+                            <ul class="list-disc pl-5 mt-2 space-y-1 text-gray-700 dark:text-gray-300">
+                                <li>Beam deflection calculations</li>
+                                <li>Structural design of columns and beams</li>
+                                <li>Mechanical component design</li>
+                                <li>Analysis of rotating bodies</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Buttons -->
+        <div class="mt-8 flex justify-center space-x-4">
+            <button id="export-pdf" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md transition duration-300">
+                <i class="fas fa-file-pdf mr-2"></i> Export as PDF
+            </button>
+            <button id="export-csv" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-md transition duration-300">
+                <i class="fas fa-file-csv mr-2"></i> Export as CSV
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Dark mode toggle
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const html = document.documentElement;
+
+        // Check for saved theme preference or use system preference
+        if (localStorage.getItem('darkMode') === 'true' || 
+            (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+            darkModeToggle.checked = true;
+        }
+
+        darkModeToggle.addEventListener('change', () => {
+            if (darkModeToggle.checked) {
+                html.classList.add('dark');
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                html.classList.remove('dark');
+                localStorage.setItem('darkMode', 'false');
+            }
+        });
+
+        // Shape selection and input management
+        const shapeSelect = document.getElementById('shape-select');
+        const inputFields = document.getElementById('input-fields');
+        
+        // Compare mode elements
+        const compareMode = document.getElementById('compare-mode');
+        const secondShapeContainer = document.getElementById('second-shape-container');
+        const shapeSelect2 = document.getElementById('shape-select-2');
+        const inputFields2 = document.getElementById('input-fields-2');
+        const comparisonResults = document.getElementById('comparison-results');
+        
+        // Unit selection
+        const unitSelect = document.getElementById('unit-select');
+        let currentUnit = unitSelect.value;
+        
+        // Chart for comparison
+        let comparisonChart = null;
+        
+        // Shape templates with inputs, formulas, and diagram functions
+        const shapeTemplates = {
+            rectangle: {
+                inputs: `
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Base (b):</label>
+                        <input type="number" id="rectangle-base" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter base length">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Height (h):</label>
+                        <input type="number" id="rectangle-height" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter height">
+                    </div>
+                `,
+                formula: "I = (b × h³) / 12",
+                calculate: (inputs) => {
+                    const b = parseFloat(inputs.base);
+                    const h = parseFloat(inputs.height);
+                    return (b * Math.pow(h, 3)) / 12;
+                },
+                drawDiagram: (inputs, container) => {
+                    const b = parseFloat(inputs.base) || 100;
+                    const h = parseFloat(inputs.height) || 60;
+                    
+                    // Scale dimensions to fit in the container
+                    const scale = Math.min(180 / Math.max(b, h), 1);
+                    const scaledB = b * scale;
+                    const scaledH = h * scale;
+                    
+                    // Center the shape
+                    const left = (200 - scaledB) / 2;
+                    const top = (200 - scaledH) / 2;
+                    
+                    container.innerHTML = `
+                        <div class="shape-outline" style="width: ${scaledB}px; height: ${scaledH}px; left: ${left}px; top: ${top}px;"></div>
+                        <div class="dimension-line" style="width: ${scaledB}px; left: ${left}px; top: ${top + scaledH + 10}px;"></div>
+                        <div class="dimension-text" style="left: ${left + scaledB/2 - 20}px; top: ${top + scaledH + 15}px;">b = ${inputs.base || '?'} ${currentUnit}</div>
+                        <div class="dimension-line" style="width: 2px; height: ${scaledH}px; left: ${left - 10}px; top: ${top}px;"></div>
+                        <div class="dimension-text" style="left: ${left - 30}px; top: ${top + scaledH/2 - 10}px;">h = ${inputs.height || '?'} ${currentUnit}</div>
+                    `;
+                }
+            },
+            circle: {
+                inputs: `
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Radius (r):</label>
+                        <input type="number" id="circle-radius" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter radius">
+                    </div>
+                `,
+                formula: "I = (π × r⁴) / 4",
+                calculate: (inputs) => {
+                    const r = parseFloat(inputs.radius);
+                    return (Math.PI * Math.pow(r, 4)) / 4;
+                },
+                drawDiagram: (inputs, container) => {
+                    const r = parseFloat(inputs.radius) || 50;
+                    const scale = Math.min(90 / r, 1);
+                    const scaledR = r * scale;
+                    
+                    container.innerHTML = `
+                        <div class="shape-outline" style="width: ${scaledR * 2}px; height: ${scaledR * 2}px; left: ${(200 - scaledR * 2) / 2}px; top: ${(200 - scaledR * 2) / 2}px; border-radius: 50%;"></div>
+                        <div class="dimension-line" style="width: ${scaledR}px; left: ${100 - scaledR/2}px; top: 100px;"></div>
+                        <div class="dimension-text" style="left: ${100 - 20}px; top: 110px;">r = ${inputs.radius || '?'} ${currentUnit}</div>
+                    `;
+                }
+            },
+            'hollow-circle': {
+                inputs: `
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Outer Radius (R):</label>
+                        <input type="number" id="hollow-circle-outer-radius" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter outer radius">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Inner Radius (r):</label>
+                        <input type="number" id="hollow-circle-inner-radius" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter inner radius">
+                    </div>
+                `,
+                formula: "I = π × (R⁴ - r⁴) / 4",
+                calculate: (inputs) => {
+                    const R = parseFloat(inputs.outerRadius);
+                    const r = parseFloat(inputs.innerRadius);
+                    return (Math.PI * (Math.pow(R, 4) - Math.pow(r, 4))) / 4;
+                },
+                drawDiagram: (inputs, container) => {
+                    const R = parseFloat(inputs.outerRadius) || 60;
+                    const r = parseFloat(inputs.innerRadius) || 30;
+                    const scale = Math.min(90 / R, 1);
+                    const scaledR = R * scale;
+                    const scaledr = r * scale;
+                    
+                    container.innerHTML = `
+                        <div class="shape-outline" style="width: ${scaledR * 2}px; height: ${scaledR * 2}px; left: ${(200 - scaledR * 2) / 2}px; top: ${(200 - scaledR * 2) / 2}px; border-radius: 50%;"></div>
+                        <div class="shape-outline" style="width: ${scaledr * 2}px; height: ${scaledr * 2}px; left: ${(200 - scaledr * 2) / 2}px; top: ${(200 - scaledr * 2) / 2}px; border-radius: 50%; background-color: white;"></div>
+                        <div class="dimension-line" style="width: ${scaledR}px; left: ${100 - scaledR/2}px; top: 100px;"></div>
+                        <div class="dimension-text" style="left: ${100 - 20}px; top: 110px;">R = ${inputs.outerRadius || '?'} ${currentUnit}</div>
+                        <div class="dimension-line" style="width: ${scaledr}px; left: ${100 - scaledr/2}px; top: 120px;"></div>
+                        <div class="dimension-text" style="left: ${100 - 20}px; top: 130px;">r = ${inputs.innerRadius || '?'} ${currentUnit}</div>
+                    `;
+                }
+            },
+            triangle: {
+                inputs: `
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Base (b):</label>
+                        <input type="number" id="triangle-base" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter base length">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Height (h):</label>
+                        <input type="number" id="triangle-height" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter height">
+                    </div>
+                `,
+                formula: "I = (b × h³) / 36",
+                calculate: (inputs) => {
+                    const b = parseFloat(inputs.base);
+                    const h = parseFloat(inputs.height);
+                    return (b * Math.pow(h, 3)) / 36;
+                },
+                drawDiagram: (inputs, container) => {
+                    const b = parseFloat(inputs.base) || 100;
+                    const h = parseFloat(inputs.height) || 80;
+                    
+                    const scale = Math.min(180 / Math.max(b, h), 1);
+                    const scaledB = b * scale;
+                    const scaledH = h * scale;
+                    
+                    const left = (200 - scaledB) / 2;
+                    const top = (200 - scaledH) / 2;
+                    
+                    container.innerHTML = `
+                        <div class="shape-outline" style="width: ${scaledB}px; height: 2px; left: ${left}px; top: ${top + scaledH}px;"></div>
+                        <div class="shape-outline" style="width: 2px; height: ${scaledH}px; left: ${left}px; top: ${top}px;"></div>
+                        <div class="shape-outline" style="width: ${Math.sqrt(Math.pow(scaledB, 2) + Math.pow(scaledH, 2))}px; height: 2px; left: ${left}px; top: ${top + scaledH}px; transform-origin: left center; transform: rotate(${-Math.atan2(scaledH, scaledB)}rad);"></div>
+                        
+                        <div class="dimension-line" style="width: ${scaledB}px; left: ${left}px; top: ${top + scaledH + 10}px;"></div>
+                        <div class="dimension-text" style="left: ${left + scaledB/2 - 20}px; top: ${top + scaledH + 15}px;">b = ${inputs.base || '?'} ${currentUnit}</div>
+                        
+                        <div class="dimension-line" style="width: 2px; height: ${scaledH}px; left: ${left - 10}px; top: ${top}px;"></div>
+                        <div class="dimension-text" style="left: ${left - 30}px; top: ${top + scaledH/2 - 10}px;">h = ${inputs.height || '?'} ${currentUnit}</div>
+                    `;
+                }
+            },
+            'i-beam': {
+                inputs: `
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Flange Width (b):</label>
+                        <input type="number" id="ibeam-flange-width" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter flange width">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Flange Thickness (t):</label>
+                        <input type="number" id="ibeam-flange-thickness" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter flange thickness">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Web Height (h):</label>
+                        <input type="number" id="ibeam-web-height" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter web height">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300 mb-1">Web Thickness (w):</label>
+                        <input type="number" id="ibeam-web-thickness" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" placeholder="Enter web thickness">
+                    </div>
+                `,
+                formula: "I = (b × (h + 2t)³) / 12 - ((b - w) × h³) / 12",
+                calculate: (inputs) => {
+                    const b = parseFloat(inputs.flangeWidth);
+                    const t = parseFloat(inputs.flangeThickness);
+                    const h = parseFloat(inputs.webHeight);
+                    const w = parseFloat(inputs.webThickness);
+                    
+                    const outerHeight = h + 2 * t;
+                    const outerMOI = (b * Math.pow(outerHeight, 3)) / 12;
+                    const innerMOI = ((b - w) * Math.pow(h, 3)) / 12;
+                    
+                    return outerMOI - innerMOI;
+                },
+                drawDiagram: (inputs, container) => {
+                    const b = parseFloat(inputs.flangeWidth) || 80;
+                    const t = parseFloat(inputs.flangeThickness) || 10;
+                    const h = parseFloat(inputs.webHeight) || 100;
+                    const w = parseFloat(inputs.webThickness) || 8;
+                    
+                    const totalHeight = h + 2 * t;
+                    const scale = Math.min(180 / Math.max(b, totalHeight), 1);
+                    const scaledB = b * scale;
+                    const scaledT = t * scale;
+                    const scaledH = h * scale;
+                    const scaledW = w * scale;
+                    
+                    const left = (200 - scaledB) / 2;
+                    const top = (200 - (scaledH + 2 * scaledT)) / 2;
+                    
+                    container.innerHTML = `
+                        <!-- Top flange -->
+                        <div class="shape-outline" style="width: ${scaledB}px; height: ${scaledT}px; left: ${left}px; top: ${top}px;"></div>
+                        
+                        <!-- Web -->
+                        <div class="shape-outline" style="width: ${scaledW}px; height: ${scaledH}px; left: ${left + (scaledB - scaledW)/2}px; top: ${top + scaledT}px;"></div>
+                        
+                        <!-- Bottom flange -->
+                        <div class="shape-outline" style="width: ${scaledB}px; height: ${scaledT}px; left: ${left}px; top: ${top + scaledT + scaledH}px;"></div>
+                        
+                        <!-- Dimensions -->
+                        <div class="dimension-line" style="width: ${scaledB}px; left: ${left}px; top: ${top - 10}px;"></div>
+                        <div class="dimension-text" style="left: ${left + scaledB/2 - 20}px; top: ${top - 25}px;">b = ${inputs.flangeWidth || '?'} ${currentUnit}</div>
+                        
+                        <div class="dimension-line" style="width: 2px; height: ${scaledT}px; left: ${left - 10}px; top: ${top}px;"></div>
+                        <div class="dimension-text" style="left: ${left - 30}px; top: ${top + scaledT/2 - 10}px;">t = ${inputs.flangeThickness || '?'} ${currentUnit}</div>
+                        
+                        <div class="dimension-line" style="width: 2px; height: ${scaledH}px; left: ${left - 10}px; top: ${top + scaledT}px;"></div>
+                        <div class="dimension-text" style="left: ${left - 30}px; top: ${top + scaledT + scaledH/2 - 10}px;">h = ${inputs.webHeight || '?'} ${currentUnit}</div>
+                        
+                        <div class="dimension-line" style="width: ${scaledW}px; left: ${left + (scaledB - scaledW)/2}px; top: ${top + scaledT + scaledH + scaledT + 10}px;"></div>
+                        <div class="dimension-text" style="left: ${left + scaledB/2 - 20}px; top: ${top + scaledT + scaledH + scaledT + 15}px;">w = ${inputs.webThickness || '?'} ${currentUnit}</div>
+                    `;
+                }
+            }
+            // Additional shapes can be added here following the same pattern
+        };
+
+        // Initialize the calculator
+        function initCalculator() {
+            // Set up event listeners
+            shapeSelect.addEventListener('change', updateInputFields);
+            shapeSelect2.addEventListener('change', updateInputFields2);
+            compareMode.addEventListener('change', toggleCompareMode);
+            unitSelect.addEventListener('change', updateUnits);
+            
+            // Calculate button
+            document.getElementById('calculate-btn').addEventListener('click', calculateMOI);
+            
+            // Export buttons
+            document.getElementById('export-pdf').addEventListener('click', exportToPDF);
+            document.getElementById('export-csv').addEventListener('click', exportToCSV);
+            
+            // Initialize input fields
+            updateInputFields();
+            updateInputFields2();
+        }
+
+        // Update input fields based on selected shape
+        function updateInputFields() {
+            const selectedShape = shapeSelect.value;
+            inputFields.innerHTML = shapeTemplates[selectedShape].inputs;
+        }
+
+        function updateInputFields2() {
+            const selectedShape = shapeSelect2.value;
+            inputFields2.innerHTML = shapeTemplates[selectedShape].inputs;
+        }
+
+        // Toggle compare mode
+        function toggleCompareMode() {
+            if (compareMode.checked) {
+                secondShapeContainer.classList.remove('hidden');
+                comparisonResults.classList.remove('hidden');
+            } else {
+                secondShapeContainer.classList.add('hidden');
+                comparisonResults.classList.add('hidden');
+            }
+        }
+
+        // Update units
+        function updateUnits() {
+            currentUnit = unitSelect.value;
+            // Redraw diagrams and recalculate if needed
+            if (document.getElementById('calculate-btn').hasAttribute('data-calculated')) {
+                calculateMOI();
+            }
+        }
+
+        // Calculate MOI
+        function calculateMOI() {
+            const diagramContainer = document.getElementById('shape-diagram');
+            const resultsContainer = document.getElementById('results');
+            const formulaContainer = document.getElementById('formula');
+            
+            const selectedShape = shapeSelect.value;
+            const shapeTemplate = shapeTemplates[selectedShape];
+            
+            // Get input values
+            const inputs = {};
+            const inputElements = inputFields.querySelectorAll('input');
+            inputElements.forEach(input => {
+                const idParts = input.id.split('-');
+                const key = idParts.slice(1).join('');
+                inputs[key] = input.value;
+            });
+            
+            // Calculate MOI
+            const moi = shapeTemplate.calculate(inputs);
+            
+            // Display results
+            resultsContainer.innerHTML = `
+                <p class="text-lg font-medium mb-2">Moment of Inertia (I):</p>
+                <p class="text-2xl font-bold text-blue-700 dark:text-blue-400">${moi.toExponential(4)} ${currentUnit}⁴</p>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">About the centroidal axis</p>
+            `;
+            
+            // Display formula
+            formulaContainer.innerHTML = `
+                <p class="font-medium">${shapeTemplate.formula}</p>
+                ${selectedShape === 'rectangle' ? 
+                    `<p class="mt-2 text-sm">Where:<br>
+                    b = base width<br>
+                    h = height</p>` : ''}
+                ${selectedShape === 'circle' ? 
+                    `<p class="mt-2 text-sm">Where:<br>
+                    r = radius<br>
+                    π ≈ 3.1416</p>` : ''}
+            `;
+            
+            // Draw diagram
+            shapeTemplate.drawDiagram(inputs, diagramContainer);
+            
+            // Mark as calculated
+            document.getElementById('calculate-btn').setAttribute('data-calculated', 'true');
+            
+            // If in compare mode, calculate second shape
+            if (compareMode.checked) {
+                calculateSecondShape();
+            }
+        }
+
+        // Calculate second shape for comparison
+        function calculateSecondShape() {
+            const results1Container = document.getElementById('results-1');
+            const results2Container = document.getElementById('results-2');
+            
+            const selectedShape1 = shapeSelect.value;
+            const selectedShape2 = shapeSelect2.value;
+            
+            const shapeTemplate1 = shapeTemplates[selectedShape1];
+            const shapeTemplate2 = shapeTemplates[selectedShape2];
+            
+            // Get input values for shape 1
+            const inputs1 = {};
+            const inputElements1 = inputFields.querySelectorAll('input');
+            inputElements1.forEach(input => {
+                const idParts = input.id.split('-');
+                const key = idParts.slice(1).join('');
+                inputs1[key] = input.value;
+            });
+            
+            // Get input values for shape 2
+            const inputs2 = {};
+            const inputElements2 = inputFields2.querySelectorAll('input');
+            inputElements2.forEach(input => {
+                const idParts = input.id.split('-');
+                const key = idParts.slice(1).join('');
+                inputs2[key] = input.value;
+            });
+            
+            // Calculate MOIs
+            const moi1 = shapeTemplate1.calculate(inputs1);
+            const moi2 = shapeTemplate2.calculate(inputs2);
+            
+            // Display results
+            results1Container.innerHTML = `
+                <p class="font-medium">${selectedShape1.replace('-', ' ').toUpperCase()}</p>
+                <p class="text-xl font-bold text-blue-700 dark:text-blue-400">${moi1.toExponential(4)} ${currentUnit}⁴</p>
+            `;
+            
+            results2Container.innerHTML = `
+                <p class="font-medium">${selectedShape2.replace('-', ' ').toUpperCase()}</p>
+                <p class="text-xl font-bold text-blue-700 dark:text-blue-400">${moi2.toExponential(4)} ${currentUnit}⁴</p>
+            `;
+            
+            // Update comparison chart
+            updateComparisonChart(selectedShape1, moi1, selectedShape2, moi2);
+        }
+
+        // Update comparison chart
+        function updateComparisonChart(shape1, moi1, shape2, moi2) {
+            const ctx = document.getElementById('comparison-chart').getContext('2d');
+            
+            // Destroy previous chart if it exists
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+            
+            comparisonChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [shape1.replace('-', ' ').toUpperCase(), shape2.replace('-', ' ').toUpperCase()],
+                    datasets: [{
+                        label: `Moment of Inertia (${currentUnit}⁴)`,
+                        data: [moi1, moi2],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(16, 185, 129, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(59, 130, 246, 1)',
+                            'rgba(16, 185, 129, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw.toExponential(4)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: `Moment of Inertia (${currentUnit}⁴)`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Export to PDF
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Add title
+            doc.setFontSize(18);
+            doc.text('Moment of Inertia Calculation Report', 105, 15, { align: 'center' });
+            
+            // Add date
+            doc.setFontSize(10);
+            doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 22, { align: 'center' });
+            
+            // Add shape information
+            doc.setFontSize(12);
+            doc.text('Shape Parameters:', 14, 35);
+            
+            const selectedShape = shapeSelect.value;
+            const inputElements = inputFields.querySelectorAll('input');
+            
+            let yPos = 45;
+            inputElements.forEach(input => {
+                const label = input.previousElementSibling.textContent.trim();
+                doc.text(`${label}: ${input.value || 'Not provided'} ${currentUnit}`, 20, yPos);
+                yPos += 7;
+            });
+            
+            // Add calculation results
+            const results = document.getElementById('results').textContent;
+            doc.text('Calculation Results:', 14, yPos + 10);
+            doc.text(results, 20, yPos + 20);
+            
+            // Add formula
+            const formula = document.getElementById('formula').textContent;
+            doc.text('Formula Used:', 14, yPos + 30);
+            doc.text(formula, 20, yPos + 40, { maxWidth: 170 });
+            
+            // Save the PDF
+            doc.save('MOI_Calculation.pdf');
+        }
+
+        // Export to CSV
+        function exportToCSV() {
+            const selectedShape = shapeSelect.value;
+            const inputElements = inputFields.querySelectorAll('input');
+            const results = document.getElementById('results').textContent.trim();
+            const formula = document.getElementById('formula').textContent.trim();
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Moment of Inertia Calculation Report\n";
+            csvContent += `Generated on: ${new Date().toLocaleString()}\n\n`;
+            csvContent += "Shape Parameters:\n";
+            
+            inputElements.forEach(input => {
+                const label = input.previousElementSibling.textContent.trim();
+                csvContent += `${label},${input.value || 'Not provided'} ${currentUnit}\n`;
+            });
+            
+            csvContent += `\nCalculation Results:\n${results}\n\n`;
+            csvContent += `Formula Used:\n${formula}\n`;
+            
+            // Create download link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "MOI_Calculation.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Initialize the calculator when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initCalculator);
+    </script>
+</body>
+</html>
